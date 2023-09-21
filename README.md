@@ -1,4 +1,4 @@
-# RustScheduleSystem
+# Rust Schedule System
 
 Please read the instructions and project requirements here: 
 
