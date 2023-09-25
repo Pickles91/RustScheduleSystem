@@ -61,4 +61,56 @@ mod tests {
         sched.tick();
         assert_eq!(sched.system_state.time, 1);
     }
+    #[test]
+    fn test_fcfs_one_process() {
+        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, 10, 0)]);
+        for _ in 0..10 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 1);
+    }
+    #[test]
+    fn test_fcfs_one_process_different_arrival_time() {
+        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, 10, 2)]);
+        for _ in 0..10 {
+            sched.tick();
+        }
+        assert_eq!(sched.processes[0].burst, 2);
+        for _ in 0..2 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 1);
+    }
+    #[test]
+    fn test_fcfs_multiple_processes() {
+        let mut sched = super::FCFS::new(vec![
+            Process::new(String::from("test"), 0, 0, 10, 0),
+            Process::new(String::from("test2"), 1, 1, 7, 5),
+        ]);
+        for _ in 0..10 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 1);
+        for _ in 0..7 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 2);
+    }
+    #[test]
+    fn test_fcfs_multiple_processes_with_idle() {
+        let mut sched = super::FCFS::new(vec![
+            Process::new(String::from("test"), 0, 0, 10, 0),
+            Process::new(String::from("test2"), 1, 1, 7, 11),
+        ]);
+        for _ in 0..10 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 1);
+        for _ in 0..7 {
+            sched.tick();
+        }
+        assert_eq!(sched.finished.len(), 1);
+        sched.tick();
+        assert_eq!(sched.finished.len(), 2);
+    }
 }
