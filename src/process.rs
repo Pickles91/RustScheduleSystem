@@ -1,10 +1,11 @@
 use crate::system_state::SystemState;
 
+#[derive(Debug)]
 pub struct Process{
     name: String,
     pid: i32,
     priority: i32,
-    burst: i32,
+    pub burst: i32,
     pub arrival: i32,
 }
 

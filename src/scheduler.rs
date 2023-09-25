@@ -9,6 +9,7 @@ struct FCFS {
     // which can function as a queue (or a stack, it has both pop_{front, back} methods)
     // is nice for this.
     processes: VecDeque<Process>,
+    finished: Vec<Process>,
     system_state: SystemState,
 }
 
@@ -18,6 +19,7 @@ impl FCFS {
         Self {
             processes: processes.into(),
             system_state: SystemState::new(),
+            finished: Vec::new(),
         }
     }
 }
@@ -36,6 +38,12 @@ impl Scheduler for FCFS {
             return;
         }
         process.tick(&self.system_state);
+        if process.burst == 0 {
+            // we've been working with the first process this entire time -
+            // we know it exists so it's safe to just `unwrap()` it rather
+            // then checking if it's there or not.
+            self.finished.push(self.processes.pop_front().unwrap());
+        }
         self.system_state.time += 1;
     }
 }
