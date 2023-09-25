@@ -21,9 +21,14 @@ impl Scheduler for FCFS {
             Some(v) => v,
             None => { self.system_state.time += 1; return;},
         };
-        if process.arrival <= self.system_state.time {
-            process.tick(&self.system_state);
+        // if the next process to work on isn't ready yet -
+        // increment the system time and return, since we
+        // don't have anything to do.
+        if process.arrival > self.system_state.time {
+            self.system_state.time += 1;
+            return;
         }
+        process.tick(&self.system_state);
         self.system_state.time += 1;
     }
 }
