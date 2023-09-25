@@ -1,8 +1,14 @@
+use std::collections::VecDeque;
+
 use crate::system_state::SystemState;
 use crate::process::Process;
 
 struct FCFS {
-    processes: Vec<Process>,
+    // FCFS is a FIFO algorithm. It takes processes by arrival time,
+    // and processes the ones that came in first. A VecDeque,
+    // which can function as a queue (or a stack, it has both pop_{front, back} methods)
+    // is nice for this.
+    processes: VecDeque<Process>,
     system_state: SystemState,
 }
 
@@ -10,7 +16,8 @@ impl FCFS {
     pub fn new(mut processes: Vec<Process>) -> Self {
         processes.sort_by(|a,b| a.arrival.cmp(&b.arrival));
         Self {
-            processes,system_state: SystemState::new(),
+            processes: processes.into(),
+            system_state: SystemState::new(),
         }
     }
 }
