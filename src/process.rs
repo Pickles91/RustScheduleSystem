@@ -19,7 +19,7 @@ impl Process {
         }
     }
     pub fn tick(&mut self, state: &SystemState) {
-        assert!(self.arrival >= state.time);
+        assert!(self.arrival <= state.time);
         self.burst -= 1;
     }
 }
