@@ -1,10 +1,11 @@
 use crate::system_state::SystemState;
 
+#[derive(Debug)]
 pub struct Process{
     name: String,
     pid: i32,
     priority: i32,
-    burst: i32,
+    pub burst: i32,
     pub arrival: i32,
 }
 
@@ -19,7 +20,7 @@ impl Process {
         }
     }
     pub fn tick(&mut self, state: &SystemState) {
-        assert!(self.arrival >= state.time);
+        assert!(self.arrival <= state.time);
         self.burst -= 1;
     }
 }
