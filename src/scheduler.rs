@@ -9,7 +9,6 @@ struct FCFS {
     // which can function as a queue (or a stack, it has both pop_{front, back} methods)
     // is nice for this.
     processes: VecDeque<Process>,
-    finished: Vec<Process>,
 }
 
 impl FCFS {
@@ -17,35 +16,40 @@ impl FCFS {
         processes.sort_by(|a,b| a.arrival.cmp(&b.arrival));
         Self {
             processes: processes.into(),
-            finished: Vec::new(),
         }
     }
 }
 
 impl Scheduler for FCFS {
-    fn tick(&mut self, system_state: &SystemState) {
-       let process = match self.processes.get_mut(0) {
+    fn tick(&mut self, system_state: &SystemState) -> SchedulerResult<'_> {
+       let process = match self.processes.front_mut() {
             Some(v) => v,
-            None => return,
+            None => return SchedulerResult::Idle,
         };
-        // if the next process to work on isn't ready yet -
-        // increment the system time and return, since we
-        // don't have anything to do.
         if process.arrival > system_state.time {
-            return;
+            return SchedulerResult::Idle;
         }
+
         process.tick(system_state);
         if process.burst == 0 {
-            // we've been working with the first process this entire time -
-            // we know it exists so it's safe to just `unwrap()` it rather
-            // then checking if it's there or not.
-            self.finished.push(self.processes.pop_front().unwrap());
+            SchedulerResult::Finished(self.processes.pop_front().unwrap())
+        } else {
+            SchedulerResult::Processing(&self.processes[0])
         }
+
     }
 }
 
+#[derive(PartialEq, Debug)]
+pub enum SchedulerResult<'a> {
+    Finished(Process),
+    // remaining burst
+    Processing(&'a Process),
+    Idle,
+}
+
 trait Scheduler {
-    fn tick(&mut self, system_state: &SystemState);
+    fn tick(&mut self, system_state: &SystemState) -> SchedulerResult;
 }
 
 #[cfg(test)]
@@ -56,7 +60,7 @@ mod tests {
     fn test_fcfs_zero_process() {
         let mut sched = super::FCFS::new(Vec::new());
         let state = SystemState::new();
-        sched.tick(&state);
+        assert_eq!(sched.tick(&state), SchedulerResult::Idle);
     }
     #[test]
     fn test_fcfs_one_process() {
@@ -66,7 +70,7 @@ mod tests {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.finished.len(), 1);
+        assert_eq!(sched.processes.len(), 0);
     }
     #[test]
     fn test_fcfs_one_process_different_arrival_time() {
@@ -77,11 +81,6 @@ mod tests {
             state.time += 1;
         }
         assert_eq!(sched.processes[0].burst, 2);
-        for _ in 0..2 {
-            sched.tick(&state);
-            state.time += 1;
-        }
-        assert_eq!(sched.finished.len(), 1);
     }
     #[test]
     fn test_fcfs_multiple_processes() {
@@ -90,16 +89,19 @@ mod tests {
             Process::new(String::from("test"), 0, 0, 10, 0),
             Process::new(String::from("test2"), 1, 1, 7, 5),
         ]);
-        for _ in 0..10 {
+        for _ in 0..9 {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.finished.len(), 1);
-        for _ in 0..7 {
+        match sched.tick(&state) {
+            SchedulerResult::Finished(p) => assert_eq!(p.name, "test"),
+            p => panic!("Expected SchedulerResult::Finished, got {p:?}"),
+        }
+        for _ in 0..6 {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.finished.len(), 2);
+        assert!(matches!(sched.tick(&state), SchedulerResult::Finished(_)));
     }
     #[test]
     fn test_fcfs_multiple_processes_with_idle() {
@@ -112,14 +114,13 @@ mod tests {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.finished.len(), 1);
+        assert_eq!(sched.processes.len(), 1);
+        assert_eq!(sched.tick(&state), SchedulerResult::Idle);
+        state.time += 1;
         for _ in 0..7 {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.finished.len(), 1);
-        sched.tick(&state);
-        state.time += 1;
-        assert_eq!(sched.finished.len(), 2);
+        assert_eq!(sched.processes.len(), 0);
     }
 }

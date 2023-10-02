@@ -1,8 +1,8 @@
 use crate::system_state::SystemState;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Process{
-    name: String,
+    pub name: String,
     pid: i32,
     priority: i32,
     pub burst: i32,
