@@ -50,6 +50,10 @@ impl Scheduler for FCFS {
             None => SchedulerResult::NoBurstLeft,
         }
     }
+
+    fn enqueue(&mut self, proc: Process) {
+        self.processes.push_back(proc);
+    }
 }
 
 #[cfg(test)]
@@ -138,7 +142,7 @@ mod tests {
              state.time += 1;
          };
          assert_eq!(proc.burst[0], Burst(BurstKind::Io, 10));
-         io_sched.processes.insert(0, proc);
+         io_sched.enqueue(proc);
          let proc = loop {
              if let SchedulerResult::Finished(proc) = io_sched.tick(&state) {
                  break proc;
