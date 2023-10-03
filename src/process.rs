@@ -1,26 +1,31 @@
-use crate::system_state::SystemState;
+use std::collections::VecDeque;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub struct Burst(pub BurstKind, pub i32);
+
+#[derive(Debug, PartialEq)]
+pub enum BurstKind {
+    Cpu,
+    Io,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Process{
-    name: String,
+    pub name: String,
     pid: i32,
     priority: i32,
-    pub burst: i32,
+    pub burst: VecDeque<Burst>,
     pub arrival: i32,
 }
 
 impl Process {
-    pub fn new(name: String, pid: i32, priority: i32, burst:i32, arrival: i32) -> Self {
+    pub fn new<T: Into<VecDeque<Burst>>>(name: String, pid: i32, priority: i32, burst:T, arrival: i32) -> Self {
         Self {
             name,
             pid,
             priority,
-            burst,
+            burst: burst.into(),
             arrival,
         }
-    }
-    pub fn tick(&mut self, state: &SystemState) {
-        assert!(self.arrival <= state.time);
-        self.burst -= 1;
     }
 }
