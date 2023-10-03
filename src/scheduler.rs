@@ -23,6 +23,7 @@ impl FCFS {
 }
 
 impl Scheduler for FCFS {
+
     fn tick(&mut self, system_state: &SystemState) -> SchedulerResult<'_> {
        let process = match self.processes.front_mut() {
             Some(v) => v,
@@ -136,4 +137,27 @@ mod tests {
         }
         assert_eq!(sched.processes.len(), 0);
     }
+
+     #[test]
+     fn test_multi_bursts() {
+         let mut state = SystemState::new();
+         let mut cpu_sched = super::FCFS::new(vec![
+             Process::new(String::from("cpu and io"), 0, 0, vec![Burst(BurstKind::Cpu, 10), Burst(BurstKind::Io, 10)], 0)
+         ], BurstKind::Cpu);
+         let mut io_sched = super::FCFS::new(vec![], BurstKind::Io);
+         let proc = loop {
+             if let SchedulerResult::Finished(proc) = cpu_sched.tick(&state) {
+                 break proc;
+             }
+             state.time += 1;
+         };
+         assert_eq!(proc.burst[0], Burst(BurstKind::Io, 10));
+         io_sched.processes.insert(0, proc);
+         let proc = loop {
+             if let SchedulerResult::Finished(proc) = io_sched.tick(&state) {
+                 break proc;
+             }
+         };
+         assert!(proc.burst.is_empty());
+     }
 }
