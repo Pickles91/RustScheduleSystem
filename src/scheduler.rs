@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::system_state::SystemState;
-use crate::process::Process;
+use crate::process::{Process, Burst, BurstKind};
 
 struct FCFS {
     // FCFS is a FIFO algorithm. It takes processes by arrival time,
@@ -9,13 +9,15 @@ struct FCFS {
     // which can function as a queue (or a stack, it has both pop_{front, back} methods)
     // is nice for this.
     processes: VecDeque<Process>,
+    kind: BurstKind,
 }
 
 impl FCFS {
-    pub fn new(mut processes: Vec<Process>) -> Self {
+    pub fn new(mut processes: Vec<Process>, kind: BurstKind) -> Self {
         processes.sort_by(|a,b| a.arrival.cmp(&b.arrival));
         Self {
             processes: processes.into(),
+            kind,
         }
     }
 }
@@ -30,13 +32,21 @@ impl Scheduler for FCFS {
             return SchedulerResult::Idle;
         }
 
-        process.tick(system_state);
-        if process.burst == 0 {
-            SchedulerResult::Finished(self.processes.pop_front().unwrap())
-        } else {
-            SchedulerResult::Processing(&self.processes[0])
+        match process.burst.front_mut() {
+            Some(Burst(kind, burst_amt)) if self.kind == *kind => { 
+                *burst_amt -= 1;
+                if *burst_amt == 0 {
+                    let mut proc = self.processes.pop_front().unwrap();
+                    proc.burst.pop_front().unwrap();
+                    SchedulerResult::Finished(proc)
+                } else {
+                    SchedulerResult::Processing(&self.processes[0])
+                }
+            },
+            // in this case we must not match the kind
+            Some(Burst(_, _)) => SchedulerResult::WrongKind,
+            None => SchedulerResult::NoBurstLeft,
         }
-
     }
 }
 
@@ -46,7 +56,10 @@ pub enum SchedulerResult<'a> {
     // remaining burst
     Processing(&'a Process),
     Idle,
+    WrongKind,
+    NoBurstLeft,
 }
+
 
 trait Scheduler {
     fn tick(&mut self, system_state: &SystemState) -> SchedulerResult;
@@ -58,14 +71,14 @@ mod tests {
     // this shouldn't panic, or do anything really.
     #[test]
     fn test_fcfs_zero_process() {
-        let mut sched = super::FCFS::new(Vec::new());
+        let mut sched = super::FCFS::new(Vec::new(), BurstKind::Cpu);
         let state = SystemState::new();
         assert_eq!(sched.tick(&state), SchedulerResult::Idle);
     }
     #[test]
     fn test_fcfs_one_process() {
         let mut state = SystemState::new();
-        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, 10, 0)]);
+        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, vec![Burst(BurstKind::Cpu, 7)], 0)], BurstKind::Cpu);
         for _ in 0..10 {
             sched.tick(&state);
             state.time += 1;
@@ -75,20 +88,20 @@ mod tests {
     #[test]
     fn test_fcfs_one_process_different_arrival_time() {
         let mut state = SystemState::new();
-        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, 10, 2)]);
+        let mut sched = super::FCFS::new(vec![Process::new(String::from("test"), 0, 0, vec![Burst(BurstKind::Cpu, 10)], 2)], BurstKind::Cpu);
         for _ in 0..10 {
             sched.tick(&state);
             state.time += 1;
         }
-        assert_eq!(sched.processes[0].burst, 2);
+        assert_eq!(sched.processes[0].burst.front(), Some(&Burst(BurstKind::Cpu, 2)));
     }
     #[test]
     fn test_fcfs_multiple_processes() {
         let mut state = SystemState::new();
         let mut sched = super::FCFS::new(vec![
-            Process::new(String::from("test"), 0, 0, 10, 0),
-            Process::new(String::from("test2"), 1, 1, 7, 5),
-        ]);
+            Process::new(String::from("test"), 0, 0, vec![Burst(BurstKind::Cpu, 10)], 0),
+            Process::new(String::from("test2"), 1, 1, vec![Burst(BurstKind::Cpu, 7)], 5),
+        ], BurstKind::Cpu);
         for _ in 0..9 {
             sched.tick(&state);
             state.time += 1;
@@ -107,9 +120,9 @@ mod tests {
     fn test_fcfs_multiple_processes_with_idle() {
         let mut state = SystemState::new();
         let mut sched = super::FCFS::new(vec![
-            Process::new(String::from("test"), 0, 0, 10, 0),
-            Process::new(String::from("test2"), 1, 1, 7, 11),
-        ]);
+            Process::new(String::from("test"), 0, 0, vec![Burst(BurstKind::Cpu, 10)], 0),
+            Process::new(String::from("test2"), 1, 1, vec![Burst(BurstKind::Cpu, 7)], 11),
+        ], BurstKind::Cpu);
         for _ in 0..10 {
             sched.tick(&state);
             state.time += 1;
