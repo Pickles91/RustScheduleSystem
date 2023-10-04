@@ -12,8 +12,8 @@ pub enum BurstKind {
 #[derive(Debug, PartialEq)]
 pub struct Process{
     pub name: String,
-    pid: i32,
-    priority: i32,
+    pub pid: i32,
+    pub priority: i32,
     pub burst: VecDeque<Burst>,
     pub arrival: i32,
 }

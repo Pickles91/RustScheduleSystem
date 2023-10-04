@@ -1,6 +1,8 @@
 use crate::system_state::SystemState;
 use crate::process::{Process, Burst, BurstKind};
 
+pub mod priority;
+//pub mod pswrr;
 pub mod fcfs;
 
 #[derive(PartialEq, Debug)]
