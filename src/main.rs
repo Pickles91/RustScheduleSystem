@@ -85,11 +85,10 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                     BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(_) => {
-            },
-            scheduler::SchedulerResult::Idle => {},
+            scheduler::SchedulerResult::Processing(_)
+                | scheduler::SchedulerResult::Idle
+                | scheduler::SchedulerResult::NoBurstLeft => {},
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => {},
         };
         let io_sched_result = io_sched.tick(&state);
         match io_sched_result.clone() {
@@ -102,10 +101,10 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                     BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(_) => {},
-            scheduler::SchedulerResult::Idle => {},
-            scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => {},
+            scheduler::SchedulerResult::Processing(_) 
+                | scheduler::SchedulerResult::Idle
+                | scheduler::SchedulerResult::NoBurstLeft => {},
+            scheduler::SchedulerResult::WrongKind => panic!("schedule for CPU instead you idiot."),
         };
 
         for i in cpu_queue { cpu_sched.enqueue(i); }
