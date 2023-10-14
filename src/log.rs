@@ -1,4 +1,4 @@
-use std::io::Stdout;
+use std::{io::Stdout, collections::HashSet};
 
 use tui::{Terminal, backend::CrosstermBackend, widgets::{List, ListItem, Block, Borders}, layout::Rect};
 
@@ -28,6 +28,126 @@ impl Log {
     }
     pub fn push(&mut self, entry: TickEntry) {
         self.content.push(entry);
+    }
+
+    fn all_processes(content: &TickEntry) -> Vec<Process> {
+        content
+            .cpu_queue
+            .iter()
+            .chain(content.io_queue.iter())
+            .chain(content.finished_processes.iter())
+            .chain(content.yet_to_arrive.iter())
+            .cloned()
+            .collect()
+    }
+
+    fn get_cpu_arrivals(content: &[TickEntry]) -> Vec<Process> {
+        // all the processes in the first entry are logically newly arrived.
+        if content.len() == 1 {
+            return content.first().unwrap().cpu_queue.clone();
+        }
+        let current_running_pids = content
+            .last()
+            .unwrap()
+            .cpu_queue
+            .iter()
+            .map(|proc| proc.pid)
+            .collect::<HashSet<_>>();
+        let last_running_pids = 
+                &content.get(content.len() - 2)
+                    .unwrap()
+                    .cpu_queue
+                    .iter()
+                    .map(|proc| proc.pid)
+                    .collect::<HashSet<_>>();
+        let new_pids = current_running_pids
+            .difference(
+                last_running_pids
+            )
+            .collect::<HashSet<_>>();
+
+        Self::all_processes(&content[0])
+            .into_iter()
+            .filter(|proc| new_pids.contains(&proc.pid))
+            .collect()
+    }
+    fn get_io_arrivals(content: &[TickEntry]) -> Vec<Process> {
+        // all the processes in the first entry are logically newly arrived.
+        if content.len() == 1 {
+            return content.first().unwrap().io_queue.clone();
+        }
+        let current_running_pids = content
+            .last()
+            .unwrap()
+            .io_queue
+            .iter()
+            .map(|proc| proc.pid)
+            .collect::<HashSet<_>>();
+        let last_running_pids = 
+                &content.get(content.len() - 2)
+                    .unwrap()
+                    .io_queue
+                    .iter()
+                    .map(|proc| proc.pid)
+                    .collect::<HashSet<_>>();
+        let new_pids = current_running_pids
+            .difference(
+                last_running_pids
+            )
+            .collect::<HashSet<_>>();
+
+        Self::all_processes(&content[0])
+            .into_iter()
+            .filter(|proc| new_pids.contains(&proc.pid))
+            .collect()
+    }
+
+    fn get_scheduler_process(result: &SchedulerResult) -> Option<Process> {
+        match result {
+            SchedulerResult::Finished(p) | SchedulerResult::Processing(p) => Some(p.clone()),
+            _ => None
+        }
+    }
+
+    fn get_log_content(content: &[TickEntry]) -> Vec<String> {
+        let mut log_contents = vec![];
+        for i in 0..content.len() {
+            let cpu_arrivals = Self::get_cpu_arrivals(&content[..i + 1]);
+            if !cpu_arrivals.is_empty() {
+                log_contents.push(format!("T{}: PROCESSES ARRIVED IN READY QUEUE: [{}]", i, cpu_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
+            }
+            let io_arrivals = Self::get_io_arrivals(&content[..i + 1]);
+            if !io_arrivals.is_empty() {
+                log_contents.push(format!("T{}: PROCESSES ARRIVED IN IO QUEUE: [{}]", i, io_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
+            }
+            let new_cpu_user = match Self::get_scheduler_process(&content[i].io_process) {
+                Some(v) if i == 0 => Some(v),
+                Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].cpu_process) {
+                        if v2.pid != v.pid { Some(v) } else { None }
+                    } else {
+                        Some(v)
+                    },
+                None => None
+            };
+            if let Some(v) = new_cpu_user {
+                log_contents.push(format!("T{}: NEW PROCESS IS USING CPU: {}", i, v.name));
+            }
+
+            let new_io_user = 
+                match Self::get_scheduler_process(&content[i].io_process) {
+                    Some(v) if i == 0 => Some(v),
+                    Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].io_process) {
+                            if v2.pid != v.pid { Some(v) } else { None }
+                        } else {
+                            Some(v)
+                        },
+                    None => None
+                };
+            if let Some(v) = new_io_user {
+                log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
+            }
+        }
+        log_contents
     }
     fn draw_frame(term: &mut Terminal<CrosstermBackend<Stdout>>, content: &[TickEntry]) {
         term.clear().unwrap();
@@ -77,11 +197,6 @@ impl Log {
                                 .sum::<f64>() / content.len() as f64
                         )
                     ),
-                    ListItem::new(
-                        format!(
-                            "CREATED PROCESS: {}"
-                        )
-                    )
                 ])
                 .block(
                         Block::default()
@@ -137,14 +252,11 @@ impl Log {
                 List::new(
                     content.iter()
                         .map(|entry| 
-                            entry.cpu_queue.iter()
-                            .chain(entry.io_queue.iter())
-                            .chain(entry.arrived_processes.iter())
-                            .chain(entry.yet_to_arrive.iter())
-                            .chain(entry.finished_processes.iter())
-                            .map(|process| ListItem::new(format!("{:?}", process))))
-                            .last()
-                            .unwrap()
+                            Self::all_processes(entry)
+                                .into_iter()
+                                .map(|process| ListItem::new(format!("{:?}", process))))
+                                .last()
+                                .unwrap()
                         .collect::<Vec<_>>()
                 )
                 .block(
@@ -153,6 +265,22 @@ impl Log {
                             .borders(Borders::all())
                 )
                 , Rect::new(0, 5, 140, 5)
+            );
+            f.render_widget(
+                List::new(
+                    Self::get_log_content(content)
+                        .into_iter()
+                        .rev()
+                        .take(5)
+                        .map(|process| ListItem::new(format!("{:?}", process)))
+                        .collect::<Vec<_>>()
+                )
+                .block(
+                        Block::default()
+                            .title("LOG")
+                            .borders(Borders::all())
+                )
+                , Rect::new(0, 10, 140, 7)
             );
         }).unwrap();
     }

@@ -36,7 +36,7 @@ fn main() {
                     BurstKind::Io => BurstKind::Cpu,
                 };
             }
-            dbg!(Process::new(name.to_owned(), pid.try_into().unwrap(), priority, bursts, arrival_time))
+            Process::new(name.to_owned(), pid.try_into().unwrap(), priority, bursts, arrival_time)
         })
         .collect();
     // sort them to be sorted by arrival time, since we only want to add them to the scheduler once they're in.
