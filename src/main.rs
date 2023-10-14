@@ -1,16 +1,15 @@
 use std::collections::VecDeque;
 
+use log::Log;
 use process::{Burst, BurstKind, Process};
 use scheduler::{Scheduler, fcfs::FCFS};
 use system_state::SystemState;
-use gui::Gui;
 
-use crate::gui::SchedulerState;
 
 mod process;
 mod system_state;
 mod scheduler;
-mod gui;
+mod log;
 
 fn main() {
     let mut args = std::env::args();
@@ -52,15 +51,20 @@ fn main() {
 
 
 fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mut io_sched: impl Scheduler) {
-    let mut gui = gui::Gui::new();
-
     let mut finished_process_queue = vec![];
 
-    gui.yet_to_arrive = processes.clone().into_iter().collect();
+    let mut log = Log::new();
     
+    let mut state = SystemState::new();
+
     loop {
+        let mut arrived_processes = vec![];
+        let mut cpu_process = None;
+        let mut io_process = None;
+
         match processes.front() {
-            Some(proc) if proc.arrival <= gui.system_state.time => {
+            Some(proc) if proc.arrival <= state.time => {
+                arrived_processes.push(proc.clone());
                 cpu_sched.enqueue(processes.pop_front().unwrap());
                 continue;
             }
@@ -72,63 +76,60 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
         // duplicated code (with subtle differences that makes abstracting this annoying)
         // alert.
-        match cpu_sched.tick(&gui.system_state) {
+        match cpu_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                gui.cpu_time += 1;
+                cpu_process = Some(p.clone());
                 finished_process_queue.push(p.clone());
-                gui.cpu_state = SchedulerState::Processing(p);
             },
             scheduler::SchedulerResult::Finished(p) => {
-                gui.cpu_time += 1;
-                gui.cpu_state = SchedulerState::Processing(p.clone());
+                cpu_process = Some(p.clone());
                 match p.burst[0].0 {
                     BurstKind::Cpu => cpu_queue.push(p),
                     BurstKind::Io => io_queue.push(p),
                 }
             }
             scheduler::SchedulerResult::Processing(p) => {
-                gui.cpu_time += 1;
-                gui.cpu_state = SchedulerState::Processing(p.clone());
+                cpu_process = Some(p.clone());
             },
-            scheduler::SchedulerResult::Idle => gui.cpu_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::Idle => {},
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => gui.cpu_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::NoBurstLeft => {},
         };
-        match io_sched.tick(&gui.system_state) {
+        match io_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                gui.io_time += 1;
+                io_process = Some(p.clone());
                 finished_process_queue.push(p.clone());
-                gui.io_state = SchedulerState::Processing(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
-                gui.io_time += 1;
-                gui.io_state = SchedulerState::Processing(p.clone());
-                println!("process on IO finished burst {}", p.name);
+                io_process = Some(p.clone());
                 match p.burst[0].0 {
                     BurstKind::Cpu => cpu_queue.push(p),
                     BurstKind::Io => io_queue.push(p),
                 }
             }
             scheduler::SchedulerResult::Processing(p) => {
-                gui.io_time += 1;
-                gui.io_state = SchedulerState::Processing(p.clone());
+                io_process = Some(p.clone());
             },
-            scheduler::SchedulerResult::Idle => gui.io_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::Idle => {},
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => gui.io_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::NoBurstLeft => {},
         };
 
-        gui.draw();
         for i in cpu_queue { cpu_sched.enqueue(i); }
         for i in io_queue { io_sched.enqueue(i); }
 
-        gui.cpu_process_queue = cpu_sched.get_queue().into_iter().cloned().collect();
-        gui.io_process_queue = io_sched.get_queue().into_iter().cloned().collect();
-        gui.finished_processes = finished_process_queue.clone();
-        gui.yet_to_arrive = processes.clone().into_iter().collect();
+        log.push(log::TickEntry { 
+            cpu_process,
+            io_process,
+            arrived_processes,
+            cpu_queue: cpu_sched.get_queue().into_iter().cloned().collect(),
+            io_queue: io_sched.get_queue().into_iter().cloned().collect(),
+            yet_to_arrive: processes.clone().into_iter().collect(),
+            finished_processes: finished_process_queue.clone(),
+        });
+        log.draw_gui();
 
-        gui.system_state.time += 1;
-
+        state.time += 1;
 
         if cpu_sched.get_queue().is_empty() && io_sched.get_queue().is_empty() && processes.is_empty() {
             return;
