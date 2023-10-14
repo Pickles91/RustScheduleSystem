@@ -54,9 +54,6 @@ fn main() {
 fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mut io_sched: impl Scheduler) {
     let mut state = SystemState::new();
 
-    // when this hits zero we're done.
-    let mut remaining_processes = processes.len();
-
     let mut gui = gui::Gui::new();
 
     let mut finished_process_queue = vec![];
@@ -87,7 +84,6 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                 gui.cpu_time += 1;
                 finished_process_queue.push(p.clone());
                 gui.cpu_state = SchedulerState::Processing(p);
-                remaining_processes -= 1;
             },
             scheduler::SchedulerResult::Finished(p) => {
                 gui.cpu_time += 1;
@@ -109,7 +105,6 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
                 gui.io_time += 1;
                 finished_process_queue.push(p.clone());
-                remaining_processes -= 1;
                 gui.io_state = SchedulerState::Processing(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
@@ -134,7 +129,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         for i in io_queue { io_sched.enqueue(i); }
         state.time += 1;
 
-        if remaining_processes == 0 {
+        if cpu_sched.get_queue().is_empty() && io_sched.get_queue().is_empty() && processes.is_empty() {
             return;
         }
     }
