@@ -20,6 +20,7 @@ pub struct Gui {
     pub cpu_process_queue: Vec<Process>,
     pub io_process_queue: Vec<Process>,
     pub finished_processes: Vec<Process>,
+    pub all_processes: Vec<Process>,
 }
 impl Gui {
     pub fn new() -> Self {
@@ -30,6 +31,7 @@ impl Gui {
             cpu_process_queue: vec![],
             io_process_queue: vec![],
             finished_processes: vec![],
+            all_processes: vec![],
         }
     }
     pub fn draw(&mut self) {
@@ -96,6 +98,17 @@ impl Gui {
                 )
                 , Rect::new(75, 0, 20, 5)
             );
+            f.render_widget(
+                List::new(
+                    self.all_processes.iter().map(|process| ListItem::new(format!("{:?}", process))).collect::<Vec<_>>()
+                )
+                .block(
+                        Block::default()
+                            .title("PROCESS INFO")
+                            .borders(Borders::all())
+                )
+                , Rect::new(0, 5, 150, 5)
+            )
 
         }).unwrap();
         let mut buff = String::new();

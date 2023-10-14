@@ -58,7 +58,8 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
     let mut remaining_processes = processes.len();
 
     let mut gui = gui::Gui::new();
-
+    gui.all_processes = processes.clone().into_iter().collect();
+    
     let mut finished_process_queue = vec![];
     loop {
         match processes.front() {
