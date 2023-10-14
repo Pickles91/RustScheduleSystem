@@ -14,6 +14,11 @@ pub struct Gui {
     term: tui::Terminal<CrosstermBackend<Stdout>>,
     pub cpu_state: SchedulerState,
     pub io_state: SchedulerState,
+    // efficiency be danmned I'm not in the mood
+    // to deal with pointer lifetime shenannigans.
+    // FIXME: This should probably be Vec<&'a Process>
+    pub cpu_process_queue: Vec<Process>,
+    pub io_process_queue: Vec<Process>,
 }
 impl Gui {
     pub fn new() -> Self {
@@ -21,6 +26,8 @@ impl Gui {
             term: Terminal::new(CrosstermBackend::new(std::io::stdout())).unwrap(),
             cpu_state: SchedulerState::Idle,
             io_state: SchedulerState::Idle,
+            cpu_process_queue: vec![],
+            io_process_queue: vec![],
         }
     }
     pub fn draw(&mut self) {
@@ -47,12 +54,36 @@ impl Gui {
                     ListItem::new(cpu_text),
                     ListItem::new(io_text),
                 ])
-                .block(Block::default()
-                    .title("STATUS")
-                    .borders(Borders::all())
+                .block(
+                    Block::default()
+                        .title("STATUS")
+                        .borders(Borders::all())
                 )
                 , Rect::new(0, 0, 35, 4)
             );
+            f.render_widget(
+                List::new(
+                    self.cpu_process_queue.iter().map(|process| ListItem::new(process.name.clone())).collect::<Vec<_>>()
+                )
+                .block(
+                    Block::default()
+                        .title("CPU QUEUE")
+                        .borders(Borders::all())
+                )
+                , Rect::new(35, 0, 20, 5)
+            );
+            f.render_widget(
+                List::new(
+                    self.io_process_queue.iter().map(|process| ListItem::new(process.name.clone())).collect::<Vec<_>>()
+                )
+                .block(
+                    Block::default()
+                        .title("IO QUEUE")
+                        .borders(Borders::all())
+                )
+                , Rect::new(55, 0, 20, 5)
+            );
+
         }).unwrap();
         let mut buff = String::new();
         std::io::stdin().read_line(&mut buff).unwrap();

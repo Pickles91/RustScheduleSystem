@@ -67,6 +67,9 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
             _ => {},
         }
 
+        gui.cpu_process_queue = cpu_sched.get_queue().into_iter().cloned().collect();
+        gui.io_process_queue = io_sched.get_queue().into_iter().cloned().collect();
+
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
 
@@ -109,6 +112,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
             scheduler::SchedulerResult::NoBurstLeft => gui.io_state = SchedulerState::Idle,
         };
+
         for i in cpu_queue { cpu_sched.enqueue(i); }
         for i in io_queue { io_sched.enqueue(i); }
         state.time += 1;
