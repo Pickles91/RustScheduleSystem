@@ -21,7 +21,6 @@ pub struct Gui {
     pub io_process_queue: Vec<Process>,
     pub finished_processes: Vec<Process>,
     pub yet_to_arrive: Vec<Process>,
-    pub all_processes: Vec<Process>,
     pub system_state: SystemState,
 }
 impl Gui {
@@ -34,7 +33,6 @@ impl Gui {
             io_process_queue: vec![],
             finished_processes: vec![],
             yet_to_arrive: vec![],
-            all_processes: vec![],
             system_state: SystemState::new(),
         }
     }
@@ -125,7 +123,12 @@ impl Gui {
             );
             f.render_widget(
                 List::new(
-                    self.all_processes.iter().map(|process| ListItem::new(format!("{:?}", process))).collect::<Vec<_>>()
+                    self.cpu_process_queue.iter()
+                        .chain(self.io_process_queue.iter())
+                        .chain(self.yet_to_arrive.iter())
+                        .chain(self.finished_processes.iter())
+                        .map(|process| ListItem::new(format!("{:?}", process)))
+                        .collect::<Vec<_>>()
                 )
                 .block(
                         Block::default()
