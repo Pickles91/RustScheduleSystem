@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use log::Log;
 use process::{Burst, BurstKind, Process};
-use scheduler::{Scheduler, fcfs::FCFS};
+use scheduler::{Scheduler, fcfs::FCFS, SchedulerResult};
 use system_state::SystemState;
 
 
@@ -49,6 +49,32 @@ fn main() {
     start_sim(processes.into_iter().collect(), FCFS::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
 }
 
+fn run_sched(
+    scheduler: &mut impl Scheduler,
+    system_state: &SystemState,
+    finished_process_queue: &mut Vec<Process>,
+    cpu_queue: &mut Vec<Process>,
+    io_queue: &mut Vec<Process>,
+) -> SchedulerResult {
+    let cpu_sched_result = scheduler.tick(system_state);
+    match cpu_sched_result.clone() {
+        scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+            finished_process_queue.push(p.clone());
+        },
+        scheduler::SchedulerResult::Finished(p) => {
+            match p.burst[0].0 {
+                BurstKind::Cpu => cpu_queue.push(p),
+                BurstKind::Io => io_queue.push(p),
+            }
+        }
+        scheduler::SchedulerResult::Processing(_)
+            | scheduler::SchedulerResult::Idle
+            | scheduler::SchedulerResult::NoBurstLeft => {},
+        scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
+    };
+    cpu_sched_result
+}
+
 
 fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mut io_sched: impl Scheduler) {
     let mut finished_process_queue = vec![];
@@ -72,40 +98,8 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
 
-        // duplicated code (with subtle differences that makes abstracting this annoying)
-        // alert.
-        let cpu_sched_result = cpu_sched.tick(&state);
-        match cpu_sched_result.clone() {
-            scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                finished_process_queue.push(p.clone());
-            },
-            scheduler::SchedulerResult::Finished(p) => {
-                match p.burst[0].0 {
-                    BurstKind::Cpu => cpu_queue.push(p),
-                    BurstKind::Io => io_queue.push(p),
-                }
-            }
-            scheduler::SchedulerResult::Processing(_)
-                | scheduler::SchedulerResult::Idle
-                | scheduler::SchedulerResult::NoBurstLeft => {},
-            scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
-        };
-        let io_sched_result = io_sched.tick(&state);
-        match io_sched_result.clone() {
-            scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                finished_process_queue.push(p.clone());
-            },
-            scheduler::SchedulerResult::Finished(p) => {
-                match p.burst[0].0 {
-                    BurstKind::Cpu => cpu_queue.push(p),
-                    BurstKind::Io => io_queue.push(p),
-                }
-            }
-            scheduler::SchedulerResult::Processing(_) 
-                | scheduler::SchedulerResult::Idle
-                | scheduler::SchedulerResult::NoBurstLeft => {},
-            scheduler::SchedulerResult::WrongKind => panic!("schedule for CPU instead you idiot."),
-        };
+        let cpu_sched_result = run_sched(&mut cpu_sched, &state, &mut finished_process_queue, &mut cpu_queue, &mut io_queue);
+        let io_sched_result = run_sched(&mut io_sched, &state, &mut finished_process_queue, &mut cpu_queue, &mut io_queue);
 
         for i in cpu_queue { cpu_sched.enqueue(i); }
         for i in io_queue { io_sched.enqueue(i); }
