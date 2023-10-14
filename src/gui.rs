@@ -19,6 +19,7 @@ pub struct Gui {
     // FIXME: This should probably be Vec<&'a Process>
     pub cpu_process_queue: Vec<Process>,
     pub io_process_queue: Vec<Process>,
+    pub finished_processes: Vec<Process>,
 }
 impl Gui {
     pub fn new() -> Self {
@@ -28,6 +29,7 @@ impl Gui {
             io_state: SchedulerState::Idle,
             cpu_process_queue: vec![],
             io_process_queue: vec![],
+            finished_processes: vec![],
         }
     }
     pub fn draw(&mut self) {
@@ -82,6 +84,17 @@ impl Gui {
                         .borders(Borders::all())
                 )
                 , Rect::new(55, 0, 20, 5)
+            );
+            f.render_widget(
+                List::new(
+                    self.finished_processes.iter().map(|process| ListItem::new(process.name.clone())).collect::<Vec<_>>()
+                )
+                .block(
+                    Block::default()
+                        .title("FINISHED PROCESSES")
+                        .borders(Borders::all())
+                )
+                , Rect::new(75, 0, 20, 5)
             );
 
         }).unwrap();

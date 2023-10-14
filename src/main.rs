@@ -58,6 +58,8 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
     let mut remaining_processes = processes.len();
 
     let mut gui = gui::Gui::new();
+
+    let mut finished_process_queue = vec![];
     loop {
         match processes.front() {
             Some(proc) if proc.arrival <= state.time => {
@@ -69,6 +71,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
         gui.cpu_process_queue = cpu_sched.get_queue().into_iter().cloned().collect();
         gui.io_process_queue = io_sched.get_queue().into_iter().cloned().collect();
+        gui.finished_processes = finished_process_queue.clone();
 
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
@@ -77,6 +80,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         // alert.
         match cpu_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+                finished_process_queue.push(p.clone());
                 gui.cpu_state = SchedulerState::Processing(p);
                 remaining_processes -= 1;
             },
@@ -96,6 +100,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         };
         match io_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+                finished_process_queue.push(p.clone());
                 remaining_processes -= 1;
                 gui.io_state = SchedulerState::Processing(p.clone());
             },
