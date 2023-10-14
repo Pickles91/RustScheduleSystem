@@ -74,8 +74,8 @@ impl Gui {
             f.render_widget(
                 List::new([
                     ListItem::new(format!("TIME: {}", self.system_state.time)),
-                    ListItem::new(format!("CPU USAGE: {:.2}", (self.cpu_time as f64) / self.system_state.time as f64)),
-                    ListItem::new(format!("IO USAGE: {:.2}", (self.io_time as f64) / self.system_state.time as f64)),
+                    ListItem::new(format!("CPU USAGE: {:.2}", (self.cpu_time as f64) / (self.system_state.time as f64 + 1.))),
+                    ListItem::new(format!("IO USAGE: {:.2}", (self.io_time as f64) / (self.system_state.time as f64 + 1.))),
                 ])
                 .block(
                         Block::default()
