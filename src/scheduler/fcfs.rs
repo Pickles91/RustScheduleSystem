@@ -4,7 +4,7 @@ use crate::{process::{Process, BurstKind, Burst}, system_state::SystemState};
 
 use super::{Scheduler, SchedulerResult};
 
-struct FCFS {
+pub struct FCFS {
     // FCFS is a FIFO algorithm. It takes processes by arrival time,
     // and processes the ones that came in first. A VecDeque,
     // which can function as a queue (or a stack, it has both pop_{front, back} methods)
