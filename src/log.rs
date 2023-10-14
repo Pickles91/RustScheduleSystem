@@ -57,6 +57,10 @@ impl Log {
         Some((Self::finished_time(pid, content)? + 1) - Self::total_compute_time(pid, content)? -  Self::arrival_time(pid, content)?)
     }
 
+    fn turn_around_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
+        Some((Self::finished_time(pid, content)? + 1)  -  Self::arrival_time(pid, content)?)
+    }
+
     fn avg_wait_time(content: &[TickEntry]) -> f64 {
         let (count, sum) = content
             .last()
@@ -69,6 +73,19 @@ impl Log {
 
         sum as f64 / (count as f64 + 1.)
 
+    }
+
+    fn avg_turnaround_time(content: &[TickEntry]) -> f64 {
+        let (count, sum) = content
+            .last()
+            .unwrap()
+            .finished_processes
+            .iter()
+            .map(|proc| Self::turn_around_time(proc.pid, content).unwrap())
+            .enumerate()
+            .fold((0, 0), |(_, wait_time), (count, next_wait_time)| (count, wait_time + next_wait_time));
+
+        sum as f64 / (count as f64 + 1.)
     }
 
     fn get_cpu_arrivals(content: &[TickEntry]) -> Vec<Process> {
@@ -231,6 +248,12 @@ impl Log {
                         format!(
                             "AVG WAIT: {:.2}",
                             Self::avg_wait_time(content)
+                        )
+                    ),
+                    ListItem::new(
+                        format!(
+                            "AVG TURNARND: {:.2}",
+                            Self::avg_turnaround_time(content)
                         )
                     ),
                 ])
