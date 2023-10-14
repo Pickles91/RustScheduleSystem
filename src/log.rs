@@ -76,6 +76,11 @@ impl Log {
                                 .map(|entry| if let SchedulerResult::Finished(_) | SchedulerResult::Processing(_) = entry.io_process { 1. } else { 0. })
                                 .sum::<f64>() / content.len() as f64
                         )
+                    ),
+                    ListItem::new(
+                        format!(
+                            "CREATED PROCESS: {}"
+                        )
                     )
                 ])
                 .block(
@@ -136,6 +141,7 @@ impl Log {
                             .chain(entry.io_queue.iter())
                             .chain(entry.arrived_processes.iter())
                             .chain(entry.yet_to_arrive.iter())
+                            .chain(entry.finished_processes.iter())
                             .map(|process| ListItem::new(format!("{:?}", process))))
                             .last()
                             .unwrap()
