@@ -73,6 +73,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         gui.cpu_process_queue = cpu_sched.get_queue().into_iter().cloned().collect();
         gui.io_process_queue = io_sched.get_queue().into_iter().cloned().collect();
         gui.finished_processes = finished_process_queue.clone();
+        gui.yet_to_arrive = processes.clone().into_iter().collect();
 
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
