@@ -22,6 +22,7 @@ pub struct Gui {
     pub finished_processes: Vec<Process>,
     pub yet_to_arrive: Vec<Process>,
     pub all_processes: Vec<Process>,
+    pub system_state: SystemState,
 }
 impl Gui {
     pub fn new() -> Self {
@@ -34,6 +35,7 @@ impl Gui {
             finished_processes: vec![],
             yet_to_arrive: vec![],
             all_processes: vec![],
+            system_state: SystemState::new(),
         }
     }
     pub fn draw(&mut self) {
@@ -65,7 +67,17 @@ impl Gui {
                         .title("STATUS")
                         .borders(Borders::all())
                 )
-                , Rect::new(0, 0, 35, 4)
+                , Rect::new(0, 0, 40, 5)
+            );
+            f.render_widget(
+                List::new([
+                    ListItem::new(format!("TIME: {}", self.system_state.time))
+                ])
+                .block(
+                        Block::default()
+                            .title("SYSTEM STATE")
+                            .borders(Borders::all())
+                ), Rect::new(40, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
@@ -76,7 +88,7 @@ impl Gui {
                         .title("CPU QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(35, 0, 20, 5)
+                , Rect::new(60, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
@@ -87,7 +99,7 @@ impl Gui {
                         .title("IO QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(55, 0, 20, 5)
+                , Rect::new(80, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
@@ -98,7 +110,7 @@ impl Gui {
                         .title("FINISHED PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(75, 0, 20, 5)
+                , Rect::new(100, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
@@ -109,7 +121,7 @@ impl Gui {
                         .title("FUTURE PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(95, 0, 20, 5)
+                , Rect::new(120, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
@@ -121,7 +133,7 @@ impl Gui {
                             .borders(Borders::all())
                 )
                 , Rect::new(0, 5, 150, 5)
-            )
+            );
 
         }).unwrap();
         let mut buff = String::new();
