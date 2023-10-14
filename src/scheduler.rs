@@ -17,5 +17,6 @@ pub enum SchedulerResult<'a> {
 pub trait Scheduler {
     fn tick(&mut self, system_state: &SystemState) -> SchedulerResult;
     fn enqueue(&mut self, proc: Process);
+    fn get_queue(&self) -> Vec<&Process>;
 }
 
