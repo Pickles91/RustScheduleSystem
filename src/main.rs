@@ -3,10 +3,14 @@ use std::collections::VecDeque;
 use process::{Burst, BurstKind, Process};
 use scheduler::{Scheduler, fcfs::FCFS};
 use system_state::SystemState;
+use gui::Gui;
+
+use crate::gui::SchedulerState;
 
 mod process;
 mod system_state;
 mod scheduler;
+mod gui;
 
 fn main() {
     let mut args = std::env::args();
@@ -53,7 +57,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
     // when this hits zero we're done.
     let mut remaining_processes = processes.len();
 
-
+    let mut gui = gui::Gui::new();
     loop {
         match processes.front() {
             Some(proc) if proc.arrival <= state.time => {
@@ -62,41 +66,53 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
             }
             _ => {},
         }
+
+        let mut cpu_queue = vec![];
+        let mut io_queue = vec![];
+
+        // duplicated code (with subtle differences that makes abstracting this annoying)
+        // alert.
         match cpu_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+                gui.cpu_state = SchedulerState::Processing(p);
                 remaining_processes -= 1;
-                println!("process on cpu finished completely {}", p.name);
             },
             scheduler::SchedulerResult::Finished(p) => {
-                println!("process on cpu finished burst {}", p.name);
+                gui.cpu_state = SchedulerState::Processing(p.clone());
                 match p.burst[0].0 {
-                    BurstKind::Cpu => cpu_sched.enqueue(p),
-                    BurstKind::Io => io_sched.enqueue(p),
+                    BurstKind::Cpu => cpu_queue.push(p),
+                    BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(p) => println!("cpu processing {}", p.name),
-            scheduler::SchedulerResult::Idle => println!("cpu idling"),
-            scheduler::SchedulerResult::WrongKind => println!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => println!("no burst left."),
+            scheduler::SchedulerResult::Processing(p) => {
+                gui.cpu_state = SchedulerState::Processing(p.clone());
+            },
+            scheduler::SchedulerResult::Idle => gui.cpu_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
+            scheduler::SchedulerResult::NoBurstLeft => gui.cpu_state = SchedulerState::Idle,
         };
         match io_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
                 remaining_processes -= 1;
-                println!("process on io finished completely {}", p.name);
+                gui.io_state = SchedulerState::Processing(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
+                gui.io_state = SchedulerState::Processing(p.clone());
                 println!("process on IO finished burst {}", p.name);
                 match p.burst[0].0 {
-                    BurstKind::Cpu => cpu_sched.enqueue(p),
-                    BurstKind::Io => io_sched.enqueue(p),
+                    BurstKind::Cpu => cpu_queue.push(p),
+                    BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(p) => println!("io processing {}", p.name),
-            scheduler::SchedulerResult::Idle => println!("io idling"),
-            scheduler::SchedulerResult::WrongKind => println!("schedule for IO instead you idiot."),
-            scheduler::SchedulerResult::NoBurstLeft => println!("no burst left."),
+            scheduler::SchedulerResult::Processing(p) => gui.io_state = SchedulerState::Processing(p.clone()),
+            scheduler::SchedulerResult::Idle => gui.io_state = SchedulerState::Idle,
+            scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
+            scheduler::SchedulerResult::NoBurstLeft => gui.io_state = SchedulerState::Idle,
         };
+        for i in cpu_queue { cpu_sched.enqueue(i); }
+        for i in io_queue { io_sched.enqueue(i); }
         state.time += 1;
+        gui.draw();
 
         if remaining_processes == 0 {
             return;
