@@ -2,7 +2,7 @@ use std::io::Stdout;
 
 use tui::{backend::CrosstermBackend, Terminal, widgets::{Paragraph, Block, Borders, List, ListItem}, layout::Rect, style::Style};
 
-use crate::process::Process;
+use crate::{process::Process, system_state::SystemState};
 
 #[derive(PartialEq, Eq)]
 pub enum SchedulerState {
@@ -20,6 +20,7 @@ pub struct Gui {
     pub cpu_process_queue: Vec<Process>,
     pub io_process_queue: Vec<Process>,
     pub finished_processes: Vec<Process>,
+    pub yet_to_arrive: Vec<Process>,
     pub all_processes: Vec<Process>,
 }
 impl Gui {
@@ -31,6 +32,7 @@ impl Gui {
             cpu_process_queue: vec![],
             io_process_queue: vec![],
             finished_processes: vec![],
+            yet_to_arrive: vec![],
             all_processes: vec![],
         }
     }
@@ -97,6 +99,17 @@ impl Gui {
                         .borders(Borders::all())
                 )
                 , Rect::new(75, 0, 20, 5)
+            );
+            f.render_widget(
+                List::new(
+                    self.yet_to_arrive.iter().map(|process| ListItem::new(process.name.clone())).collect::<Vec<_>>()
+                )
+                .block(
+                    Block::default()
+                        .title("FUTURE PROCESSES")
+                        .borders(Borders::all())
+                )
+                , Rect::new(95, 0, 20, 5)
             );
             f.render_widget(
                 List::new(
