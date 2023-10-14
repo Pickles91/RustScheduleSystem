@@ -60,6 +60,9 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
     let mut gui = gui::Gui::new();
 
     let mut finished_process_queue = vec![];
+    let mut cpu_time = 0;
+    let mut io_time = 0;
+    
     loop {
         match processes.front() {
             Some(proc) if proc.arrival <= state.time => {
@@ -74,6 +77,8 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         gui.finished_processes = finished_process_queue.clone();
         gui.yet_to_arrive = processes.clone().into_iter().collect();
         gui.system_state = state;
+        gui.io_time = io_time;
+        gui.cpu_time = cpu_time;
 
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
@@ -82,11 +87,13 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         // alert.
         match cpu_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+                cpu_time += 1;
                 finished_process_queue.push(p.clone());
                 gui.cpu_state = SchedulerState::Processing(p);
                 remaining_processes -= 1;
             },
             scheduler::SchedulerResult::Finished(p) => {
+                cpu_time += 1;
                 gui.cpu_state = SchedulerState::Processing(p.clone());
                 match p.burst[0].0 {
                     BurstKind::Cpu => cpu_queue.push(p),
@@ -94,6 +101,7 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                 }
             }
             scheduler::SchedulerResult::Processing(p) => {
+                cpu_time += 1;
                 gui.cpu_state = SchedulerState::Processing(p.clone());
             },
             scheduler::SchedulerResult::Idle => gui.cpu_state = SchedulerState::Idle,
@@ -102,11 +110,13 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         };
         match io_sched.tick(&state) {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+                io_time += 1;
                 finished_process_queue.push(p.clone());
                 remaining_processes -= 1;
                 gui.io_state = SchedulerState::Processing(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
+                io_time += 1;
                 gui.io_state = SchedulerState::Processing(p.clone());
                 println!("process on IO finished burst {}", p.name);
                 match p.burst[0].0 {
@@ -114,7 +124,10 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                     BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(p) => gui.io_state = SchedulerState::Processing(p.clone()),
+            scheduler::SchedulerResult::Processing(p) => {
+                io_time += 1;
+                gui.io_state = SchedulerState::Processing(p.clone());
+            },
             scheduler::SchedulerResult::Idle => gui.io_state = SchedulerState::Idle,
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
             scheduler::SchedulerResult::NoBurstLeft => gui.io_state = SchedulerState::Idle,
