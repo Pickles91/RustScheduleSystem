@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 #[derive(Debug, PartialEq)]
 pub struct Burst(pub BurstKind, pub i32);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum BurstKind {
     Cpu,
     Io,
