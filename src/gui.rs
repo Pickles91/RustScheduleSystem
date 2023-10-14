@@ -132,7 +132,7 @@ impl Gui {
                             .title("PROCESS INFO")
                             .borders(Borders::all())
                 )
-                , Rect::new(0, 5, 150, 5)
+                , Rect::new(0, 5, 140, 5)
             );
 
         }).unwrap();
