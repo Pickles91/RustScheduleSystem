@@ -193,6 +193,26 @@ impl Log {
             if let Some(v) = new_io_user {
                 log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
             }
+            if i != 0 {
+                let new_finished = content[i]
+                    .finished_processes
+                    .iter()
+                    .map(|proc| proc.pid)
+                    .filter(|&pid| content[i - 1].finished_processes.iter().all(|proc2| proc2.pid != pid))
+                    .collect::<HashSet<_>>();
+                let new_finished = Self::all_processes(&content[0]).into_iter().filter(|proc| new_finished.contains(&proc.pid));
+
+                for p in new_finished {
+                    log_contents
+                        .push(format!(
+                            "T{}: FINISHED {} with TURNAROUND {} and WAIT {}",
+                            i,
+                            p.name,
+                            Self::turn_around_time(p.pid, content).unwrap(),
+                            Self::wait_time(p.pid, content).unwrap()
+                        ));
+                }
+            }
         }
         log_contents
     }
