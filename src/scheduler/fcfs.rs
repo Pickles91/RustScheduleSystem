@@ -24,6 +24,9 @@ impl FCFS {
 }
 
 impl Scheduler for FCFS {
+    fn get_queue(&self) -> Vec<&Process> {
+        self.processes.iter().collect()
+    }
 
     fn tick(&mut self, system_state: &SystemState) -> SchedulerResult<'_> {
        let process = match self.processes.front_mut() {
