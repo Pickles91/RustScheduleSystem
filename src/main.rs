@@ -59,8 +59,6 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
     loop {
         let mut arrived_processes = vec![];
-        let mut cpu_process = None;
-        let mut io_process = None;
 
         match processes.front() {
             Some(proc) if proc.arrival <= state.time => {
@@ -76,40 +74,35 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
         // duplicated code (with subtle differences that makes abstracting this annoying)
         // alert.
-        match cpu_sched.tick(&state) {
+        let cpu_sched_result = cpu_sched.tick(&state);
+        match cpu_sched_result.clone() {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                cpu_process = Some(p.clone());
                 finished_process_queue.push(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
-                cpu_process = Some(p.clone());
                 match p.burst[0].0 {
                     BurstKind::Cpu => cpu_queue.push(p),
                     BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(p) => {
-                cpu_process = Some(p.clone());
+            scheduler::SchedulerResult::Processing(_) => {
             },
             scheduler::SchedulerResult::Idle => {},
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
             scheduler::SchedulerResult::NoBurstLeft => {},
         };
-        match io_sched.tick(&state) {
+        let io_sched_result = io_sched.tick(&state);
+        match io_sched_result.clone() {
             scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
-                io_process = Some(p.clone());
                 finished_process_queue.push(p.clone());
             },
             scheduler::SchedulerResult::Finished(p) => {
-                io_process = Some(p.clone());
                 match p.burst[0].0 {
                     BurstKind::Cpu => cpu_queue.push(p),
                     BurstKind::Io => io_queue.push(p),
                 }
             }
-            scheduler::SchedulerResult::Processing(p) => {
-                io_process = Some(p.clone());
-            },
+            scheduler::SchedulerResult::Processing(_) => {},
             scheduler::SchedulerResult::Idle => {},
             scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
             scheduler::SchedulerResult::NoBurstLeft => {},
@@ -119,19 +112,19 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         for i in io_queue { io_sched.enqueue(i); }
 
         log.push(log::TickEntry { 
-            cpu_process,
-            io_process,
+            cpu_process: cpu_sched_result,
+            io_process: io_sched_result,
             arrived_processes,
             cpu_queue: cpu_sched.get_queue().into_iter().cloned().collect(),
             io_queue: io_sched.get_queue().into_iter().cloned().collect(),
             yet_to_arrive: processes.clone().into_iter().collect(),
             finished_processes: finished_process_queue.clone(),
         });
-        log.draw_gui();
 
         state.time += 1;
 
         if cpu_sched.get_queue().is_empty() && io_sched.get_queue().is_empty() && processes.is_empty() {
+            log.draw_gui();
             return;
         }
     }

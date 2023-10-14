@@ -3,11 +3,11 @@ use crate::process::{Process, Burst, BurstKind};
 
 pub mod fcfs;
 
-#[derive(PartialEq, Debug)]
-pub enum SchedulerResult<'a> {
+#[derive(PartialEq, Debug, Clone)]
+pub enum SchedulerResult {
     Finished(Process),
     // remaining burst
-    Processing(&'a Process),
+    Processing(Process),
     Idle,
     WrongKind,
     NoBurstLeft,

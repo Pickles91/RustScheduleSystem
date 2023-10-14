@@ -28,7 +28,7 @@ impl Scheduler for FCFS {
         self.processes.iter().collect()
     }
 
-    fn tick(&mut self, system_state: &SystemState) -> SchedulerResult<'_> {
+    fn tick(&mut self, system_state: &SystemState) -> SchedulerResult {
        let process = match self.processes.front_mut() {
             Some(v) => v,
             None => return SchedulerResult::Idle,
@@ -45,7 +45,7 @@ impl Scheduler for FCFS {
                     proc.burst.pop_front().unwrap();
                     SchedulerResult::Finished(proc)
                 } else {
-                    SchedulerResult::Processing(&self.processes[0])
+                    SchedulerResult::Processing(self.processes[0].clone())
                 }
             },
             // in this case we must not match the kind
