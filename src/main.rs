@@ -84,11 +84,8 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
     let mut state = SystemState::new();
 
     loop {
-        let mut arrived_processes = vec![];
-
         match processes.front() {
             Some(proc) if proc.arrival <= state.time => {
-                arrived_processes.push(proc.clone());
                 cpu_sched.enqueue(processes.pop_front().unwrap());
                 continue;
             }
@@ -107,7 +104,6 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
         log.push(log::TickEntry { 
             cpu_process: cpu_sched_result,
             io_process: io_sched_result,
-            arrived_processes,
             cpu_queue: cpu_sched.get_queue().into_iter().cloned().collect(),
             io_queue: io_sched.get_queue().into_iter().cloned().collect(),
             yet_to_arrive: processes.clone().into_iter().collect(),

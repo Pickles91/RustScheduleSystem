@@ -12,7 +12,6 @@ pub struct Log {
 pub struct TickEntry {
     pub cpu_process: SchedulerResult,
     pub io_process: SchedulerResult,
-    pub arrived_processes: Vec<Process>,
     pub cpu_queue: Vec<Process>,
     pub io_queue: Vec<Process>,
     pub finished_processes: Vec<Process>,
@@ -39,6 +38,37 @@ impl Log {
             .chain(content.yet_to_arrive.iter())
             .cloned()
             .collect()
+    }
+
+    // includes CPU and IO bursts.
+    fn total_compute_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
+        Some(Self::all_processes(&content[0]).iter().find(|proc| proc.pid == pid)?.burst.iter().map(|burst| burst.1).sum())
+    }
+
+    fn finished_time(pid: i32, content: &[TickEntry]) ->  Option<i32> {
+        Some(content.iter().enumerate().find(|(_time, entry)| entry.finished_processes.iter().any(|proc| proc.pid == pid))?.0 as i32)
+    }
+
+    fn arrival_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
+        Some(Self::all_processes(&content[0]).iter().find(|proc| proc.pid == pid)?.arrival)
+    }
+
+    fn wait_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
+        Some((Self::finished_time(pid, content)? + 1) - Self::total_compute_time(pid, content)? -  Self::arrival_time(pid, content)?)
+    }
+
+    fn avg_wait_time(content: &[TickEntry]) -> f64 {
+        let (count, sum) = content
+            .last()
+            .unwrap()
+            .finished_processes
+            .iter()
+            .map(|proc| Self::wait_time(proc.pid, content).unwrap())
+            .enumerate()
+            .fold((0, 0), |(_, wait_time), (count, next_wait_time)| (count, wait_time + next_wait_time));
+
+        sum as f64 / (count as f64 + 1.)
+
     }
 
     fn get_cpu_arrivals(content: &[TickEntry]) -> Vec<Process> {
@@ -174,7 +204,7 @@ impl Log {
                         .title("STATUS")
                         .borders(Borders::all())
                 )
-                , Rect::new(0, 0, 40, 5)
+                , Rect::new(0, 0, 40, 10)
             );
             f.render_widget(
                 List::new([
@@ -197,12 +227,18 @@ impl Log {
                                 .sum::<f64>() / content.len() as f64
                         )
                     ),
+                    ListItem::new(
+                        format!(
+                            "AVG WAIT: {:.2}",
+                            Self::avg_wait_time(content)
+                        )
+                    ),
                 ])
                 .block(
                         Block::default()
                             .title("SYSTEM STATE")
                             .borders(Borders::all())
-                ), Rect::new(40, 0, 20, 5)
+                ), Rect::new(40, 0, 20, 10)
             );
             f.render_widget(
                 List::new(
@@ -213,7 +249,7 @@ impl Log {
                         .title("CPU QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(60, 0, 20, 5)
+                , Rect::new(60, 0, 20, 10)
             );
             f.render_widget(
                 List::new(
@@ -224,7 +260,7 @@ impl Log {
                         .title("IO QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(80, 0, 20, 5)
+                , Rect::new(80, 0, 20, 10)
             );
             f.render_widget(
                 List::new(
@@ -235,7 +271,7 @@ impl Log {
                         .title("FINISHED PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(100, 0, 20, 5)
+                , Rect::new(100, 0, 20, 10)
             );
             f.render_widget(
                 List::new(
@@ -246,7 +282,7 @@ impl Log {
                         .title("FUTURE PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(120, 0, 20, 5)
+                , Rect::new(120, 0, 20, 10)
             );
             f.render_widget(
                 List::new(
@@ -264,7 +300,7 @@ impl Log {
                             .title("PROCESS INFO")
                             .borders(Borders::all())
                 )
-                , Rect::new(0, 5, 140, 5)
+                , Rect::new(0, 10, 140, 5)
             );
             f.render_widget(
                 List::new(
@@ -280,7 +316,7 @@ impl Log {
                             .title("LOG")
                             .borders(Borders::all())
                 )
-                , Rect::new(0, 10, 140, 7)
+                , Rect::new(0, 15, 140, 7)
             );
         }).unwrap();
     }
