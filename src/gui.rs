@@ -14,6 +14,8 @@ pub struct Gui {
     term: tui::Terminal<CrosstermBackend<Stdout>>,
     pub cpu_state: SchedulerState,
     pub io_state: SchedulerState,
+    pub cpu_time: i32,
+    pub io_time: i32,
     // efficiency be danmned I'm not in the mood
     // to deal with pointer lifetime shenannigans.
     // FIXME: This should probably be Vec<&'a Process>
@@ -34,6 +36,8 @@ impl Gui {
             finished_processes: vec![],
             yet_to_arrive: vec![],
             system_state: SystemState::new(),
+            cpu_time: 0,
+            io_time: 0,
         }
     }
     pub fn draw(&mut self) {
@@ -69,7 +73,9 @@ impl Gui {
             );
             f.render_widget(
                 List::new([
-                    ListItem::new(format!("TIME: {}", self.system_state.time))
+                    ListItem::new(format!("TIME: {}", self.system_state.time)),
+                    ListItem::new(format!("CPU USAGE: {:.2}", (self.cpu_time as f64) / self.system_state.time as f64)),
+                    ListItem::new(format!("IO USAGE: {:.2}", (self.io_time as f64) / self.system_state.time as f64)),
                 ])
                 .block(
                         Block::default()
