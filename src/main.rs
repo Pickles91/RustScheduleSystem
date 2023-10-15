@@ -47,27 +47,40 @@ fn main() {
     // sort them to be sorted by arrival time, since we only want to add them to the scheduler once they're in.
     processes.sort_unstable_by(|proc, other_proc| proc.arrival.cmp(&other_proc.arrival));
 
-    println!("Press 1 for FCFS\nPress 2 for Priority\n");
+    println!("Press 1 for FCFS\nPress 2 for Priority\nPress 3 for Round Robin");
     let mut buff = String::new();
 
     std::io::stdin().read_line(&mut buff).unwrap();
     let choice: i32 = buff.trim().parse().unwrap();
 
-    if choice == 1 {
-        start_sim(
+    match choice {
+        1 => start_sim(
             processes.into_iter().collect(),
             FCFS::new(vec![], BurstKind::Cpu),
             FCFS::new(vec![], BurstKind::Io),
-        );
-    } else if choice == 2 {
-        start_sim(
+        ),
+        2 => start_sim(
             processes.into_iter().collect(),
             scheduler::priority::Priority::new(vec![], BurstKind::Cpu),
             FCFS::new(vec![], BurstKind::Io),
-        );
-    } else {
-        panic!("Not a supported option")
-    };
+        ),
+        3 => {
+            println!("What quantum time would you like? ");
+
+            buff.clear();
+            std::io::stdin().read_line(&mut buff).unwrap();
+            let quantum_time: i32 = buff.trim().parse().unwrap();
+            start_sim(
+                processes.into_iter().collect(),
+                scheduler::round_robin::RoundRobin::new(vec![], BurstKind::Cpu, quantum_time),
+                FCFS::new(vec![], BurstKind::Io),
+            )
+        },
+        _ => {
+            panic!("Unsupported choice.")
+        }
+    }
+
 
     // this is somewhat bad design, both CPU and IO schedulers share a type (willfully, it lets me reuse code)
     // but instead of storing the BurstKind as a field, it probably would of been better to make a type like

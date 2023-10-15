@@ -4,6 +4,7 @@ use crate::process::Process;
 
 pub mod fcfs;
 pub mod priority;
+pub mod round_robin;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum SchedulerResult {
