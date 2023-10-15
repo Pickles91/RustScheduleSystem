@@ -42,11 +42,23 @@ fn main() {
     // sort them to be sorted by arrival time, since we only want to add them to the scheduler once they're in.
     processes.sort_unstable_by(|proc, other_proc| proc.arrival.cmp(&other_proc.arrival));
 
+    println!("Press 1 for FCFS\nPress 2 for Priority\n");
+    let mut buff = String::new();
+
+    std::io::stdin().read_line(&mut buff).unwrap();
+    let choice: i32 = buff.trim().parse().unwrap();
+
+    if choice == 1 {
+        start_sim(processes.into_iter().collect(), FCFS::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
+    } else if choice == 2 {
+        start_sim(processes.into_iter().collect(), scheduler::priority::Priority::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
+    } else {
+        panic!("Not a supported option")
+    };
     // this is somewhat bad design, both CPU and IO schedulers share a type (willfully, it lets me reuse code)
     // but instead of storing the BurstKind as a field, it probably would of been better to make a type like
     // BurstKindCpu<FCFS> and BurstKindIo<FCFS>. Oh well. That would of had it's own complexities.
     // ...I can just do a runtime check to validate them but that's not hip and cool.
-    start_sim(processes.into_iter().collect(), FCFS::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
 }
 
 fn run_sched(

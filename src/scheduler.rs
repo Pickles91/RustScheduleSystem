@@ -2,6 +2,7 @@ use crate::system_state::SystemState;
 use crate::process::{Process, Burst, BurstKind};
 
 pub mod fcfs;
+pub mod priority;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum SchedulerResult {
