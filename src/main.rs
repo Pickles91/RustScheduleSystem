@@ -2,14 +2,13 @@ use std::collections::VecDeque;
 
 use log::Log;
 use process::{Burst, BurstKind, Process};
-use scheduler::{Scheduler, fcfs::FCFS, SchedulerResult};
+use scheduler::{fcfs::FCFS, Scheduler, SchedulerResult};
 use system_state::SystemState;
 
-
-mod process;
-mod system_state;
-mod scheduler;
 mod log;
+mod process;
+mod scheduler;
+mod system_state;
 
 fn main() {
     let mut args = std::env::args();
@@ -20,7 +19,7 @@ fn main() {
     };
     let content = std::fs::read_to_string(&file).unwrap();
     let mut processes: Vec<Process> = content
-        .split("\n")
+        .lines()
         .enumerate()
         .map(|(pid, line)| {
             let mut process_info = line.split(" ");
@@ -36,7 +35,13 @@ fn main() {
                     BurstKind::Io => BurstKind::Cpu,
                 };
             }
-            Process::new(name.to_owned(), pid.try_into().unwrap(), priority, bursts, arrival_time)
+            Process::new(
+                name.to_owned(),
+                pid.try_into().unwrap(),
+                priority,
+                bursts,
+                arrival_time,
+            )
         })
         .collect();
     // sort them to be sorted by arrival time, since we only want to add them to the scheduler once they're in.
@@ -49,9 +54,17 @@ fn main() {
     let choice: i32 = buff.trim().parse().unwrap();
 
     if choice == 1 {
-        start_sim(processes.into_iter().collect(), FCFS::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
+        start_sim(
+            processes.into_iter().collect(),
+            FCFS::new(vec![], BurstKind::Cpu),
+            FCFS::new(vec![], BurstKind::Io),
+        );
     } else if choice == 2 {
-        start_sim(processes.into_iter().collect(), scheduler::priority::Priority::new(vec![], BurstKind::Cpu), FCFS::new(vec![], BurstKind::Io));
+        start_sim(
+            processes.into_iter().collect(),
+            scheduler::priority::Priority::new(vec![], BurstKind::Cpu),
+            FCFS::new(vec![], BurstKind::Io),
+        );
     } else {
         panic!("Not a supported option")
     };
@@ -71,29 +84,30 @@ fn run_sched(
 ) -> SchedulerResult {
     let cpu_sched_result = scheduler.tick(system_state);
     match cpu_sched_result.clone() {
-        scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 =>  {
+        scheduler::SchedulerResult::Finished(p) if p.burst.len() == 0 => {
             finished_process_queue.push(p.clone());
-        },
-        scheduler::SchedulerResult::Finished(p) => {
-            match p.burst[0].0 {
-                BurstKind::Cpu => cpu_queue.push(p),
-                BurstKind::Io => io_queue.push(p),
-            }
         }
+        scheduler::SchedulerResult::Finished(p) => match p.burst[0].0 {
+            BurstKind::Cpu => cpu_queue.push(p),
+            BurstKind::Io => io_queue.push(p),
+        },
         scheduler::SchedulerResult::Processing(_)
-            | scheduler::SchedulerResult::Idle
-            | scheduler::SchedulerResult::NoBurstLeft => {},
+        | scheduler::SchedulerResult::Idle
+        | scheduler::SchedulerResult::NoBurstLeft => {}
         scheduler::SchedulerResult::WrongKind => panic!("schedule for IO instead you idiot."),
     };
     cpu_sched_result
 }
 
-
-fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mut io_sched: impl Scheduler) {
+fn start_sim(
+    mut processes: VecDeque<Process>,
+    mut cpu_sched: impl Scheduler,
+    mut io_sched: impl Scheduler,
+) {
     let mut finished_process_queue = vec![];
 
     let mut log = Log::new();
-    
+
     let mut state = SystemState::new();
 
     loop {
@@ -102,19 +116,35 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
                 cpu_sched.enqueue(processes.pop_front().unwrap());
                 continue;
             }
-            _ => {},
+            _ => {}
         }
 
         let mut cpu_queue = vec![];
         let mut io_queue = vec![];
 
-        let cpu_sched_result = run_sched(&mut cpu_sched, &state, &mut finished_process_queue, &mut cpu_queue, &mut io_queue);
-        let io_sched_result = run_sched(&mut io_sched, &state, &mut finished_process_queue, &mut cpu_queue, &mut io_queue);
+        let cpu_sched_result = run_sched(
+            &mut cpu_sched,
+            &state,
+            &mut finished_process_queue,
+            &mut cpu_queue,
+            &mut io_queue,
+        );
+        let io_sched_result = run_sched(
+            &mut io_sched,
+            &state,
+            &mut finished_process_queue,
+            &mut cpu_queue,
+            &mut io_queue,
+        );
 
-        for i in cpu_queue { cpu_sched.enqueue(i); }
-        for i in io_queue { io_sched.enqueue(i); }
+        for i in cpu_queue {
+            cpu_sched.enqueue(i);
+        }
+        for i in io_queue {
+            io_sched.enqueue(i);
+        }
 
-        log.push(log::TickEntry { 
+        log.push(log::TickEntry {
             cpu_process: cpu_sched_result,
             io_process: io_sched_result,
             cpu_queue: cpu_sched.get_queue().into_iter().cloned().collect(),
@@ -125,10 +155,15 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
         state.time += 1;
 
-        if cpu_sched.get_queue().is_empty() && io_sched.get_queue().is_empty() && processes.is_empty() {
+        if cpu_sched.get_queue().is_empty()
+            && io_sched.get_queue().is_empty()
+            && processes.is_empty()
+        {
             log.draw_gui();
             println!();
-            println!("If you want to write to a file, input it's name. Otherwise just press enter.");
+            println!(
+                "If you want to write to a file, input it's name. Otherwise just press enter."
+            );
 
             let mut buff = String::new();
             std::io::stdin().read_line(&mut buff).unwrap();
