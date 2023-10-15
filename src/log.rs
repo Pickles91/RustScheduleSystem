@@ -164,32 +164,40 @@ impl Log {
     fn get_log_content(content: &[TickEntry]) -> Vec<String> {
         let mut log_contents = vec![];
         for i in 0..content.len() {
-            let new_cpu_user = match Self::get_scheduler_process(&content[i].io_process) {
-                Some(v) if i == 0 => Some(v),
+            match Self::get_scheduler_process(&content[i].cpu_process) {
+                // if time = 1 then the CPU must be being used.
+                Some(v) if i == 0 => log_contents.push(format!("T{}: NEW PROCESS IS USING CPU: {}", i, v.name)),
+                // if we have a process in the previous tick which has a different PID from the current process
+                // we must be a new process
                 Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].cpu_process) {
-                        if v2.pid != v.pid { Some(v) } else { None }
-                    } else {
-                        Some(v)
-                    },
-                None => None
+                        if v2.pid != v.pid { log_contents.push(format!("T{}: NEW PROCESS IS USING CPU: {}", i, v.name))}
+                },
+                // if we have no process now, and had a process in the previous tick, we just started idling.
+                None => {
+                    if i == 0 || Self::get_scheduler_process(&content[i - 1].cpu_process).is_some() {
+                        log_contents.push(format!("T{}: CPU IS NOW IDLE", i))
+                    }
+                }
             };
-            if let Some(v) = new_cpu_user {
-                log_contents.push(format!("T{}: NEW PROCESS IS USING CPU: {}", i, v.name));
-            }
 
-            let new_io_user = 
-                match Self::get_scheduler_process(&content[i].io_process) {
-                    Some(v) if i == 0 => Some(v),
-                    Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].io_process) {
-                            if v2.pid != v.pid { Some(v) } else { None }
-                        } else {
-                            Some(v)
-                        },
-                    None => None
-                };
-            if let Some(v) = new_io_user {
-                log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
-            }
+            // same shctick as above, but with io instead.
+            // note: yeah I duplicate code here, and it could probably be abstracted out.
+            // FIXME: deduplicate this code so IO / CPU share it.
+            match Self::get_scheduler_process(&content[i].io_process) {
+                Some(v) if i == 0 => log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name)),
+                Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].io_process) {
+                        if v2.pid != v.pid {
+                            log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
+                        }
+                    } else {
+                        log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
+                    },
+                None => {
+                    if i == 0 || Self::get_scheduler_process(&content[i - 1].io_process).is_some() {
+                        log_contents.push(format!("T{}: IO IS NOW IDLE", i))
+                    }
+                }
+            };
 
             let cpu_arrivals = Self::get_cpu_arrivals(&content[..i + 1]);
             if !cpu_arrivals.is_empty() {
