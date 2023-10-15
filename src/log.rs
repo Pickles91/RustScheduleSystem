@@ -1,6 +1,8 @@
 use std::{io::Stdout, collections::HashSet};
 use std::io::Write;
 
+use crossterm::event::{self, Event};
+use tui::widgets::Paragraph;
 use tui::{Terminal, backend::CrosstermBackend, widgets::{List, ListItem, Block, Borders}, layout::Rect};
 
 use crate::{process::Process, scheduler::SchedulerResult};
@@ -364,9 +366,19 @@ impl Log {
                 )
                 , Rect::new(0, 15, 140, 7)
             );
+            f.render_widget(
+                Paragraph::new("Press left and write arrow keys to progress / step back in time. Press q to exit.")
+                    .block(
+                        Block::default()
+                            .title("Instructions")
+                            .borders(Borders::all())
+                    )
+                ,  Rect::new(0, 22, 140, 3)
+            )
         }).unwrap();
     }
     pub fn draw_gui(&mut self) {
+        crossterm::terminal::enable_raw_mode().unwrap();
         // this actually supports moving backwards too! :)
         // we just need to set i backwards. That's why I didn't
         // write it as a for loop - the `i` actually changes 
@@ -377,13 +389,23 @@ impl Log {
         f.write_all(Self::get_log_content(&self.content).join("\n").as_bytes()).unwrap();
         f.sync_all().unwrap();
         loop {
-            if i > self.content.len() {
-                break;
-            }
             Self::draw_frame(&mut self.term, &self.content[0..i]);
-            let mut buff = String::new();
-            std::io::stdin().read_line(&mut buff).unwrap();
-            i += 1;
+            if let Event::Key(k) = event::read().unwrap() {
+                match k.code {
+                    event::KeyCode::Left => i -= 1,
+                    event::KeyCode::Right => i += 1,
+                    event::KeyCode::Enter => i += 1,
+                    event::KeyCode::Char('q') => break,
+                    _ => { continue }
+                }
+            }
+            if i <= 1 {
+                i = 1;
+            }
+            if i >= self.content.len() {
+                i = self.content.len();
+            }
         }
+        crossterm::terminal::disable_raw_mode().unwrap();
     }
 }
