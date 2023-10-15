@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::{io::Stdout, collections::HashSet};
 use std::io::Write;
 
@@ -377,6 +378,10 @@ impl Log {
             )
         }).unwrap();
     }
+    pub fn write_file(&self, f: &mut File) {
+        f.write_all(Self::get_log_content(&self.content).join("\n").as_bytes()).unwrap();
+        f.sync_all().unwrap();
+    }
     pub fn draw_gui(&mut self) {
         crossterm::terminal::enable_raw_mode().unwrap();
         // this actually supports moving backwards too! :)
@@ -385,9 +390,6 @@ impl Log {
         // bidirectionally here. It's the benefit of logging
         // everything before drawing the GUI.
         let mut i = 1;
-        let mut f = std::fs::File::create("output.txt").unwrap();
-        f.write_all(Self::get_log_content(&self.content).join("\n").as_bytes()).unwrap();
-        f.sync_all().unwrap();
         loop {
             Self::draw_frame(&mut self.term, &self.content[0..i]);
             if let Event::Key(k) = event::read().unwrap() {

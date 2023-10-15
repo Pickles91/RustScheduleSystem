@@ -55,6 +55,7 @@ fn main() {
     } else {
         panic!("Not a supported option")
     };
+
     // this is somewhat bad design, both CPU and IO schedulers share a type (willfully, it lets me reuse code)
     // but instead of storing the BurstKind as a field, it probably would of been better to make a type like
     // BurstKindCpu<FCFS> and BurstKindIo<FCFS>. Oh well. That would of had it's own complexities.
@@ -126,6 +127,14 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
         if cpu_sched.get_queue().is_empty() && io_sched.get_queue().is_empty() && processes.is_empty() {
             log.draw_gui();
+            println!();
+            println!("If you want to write to a file, input it's name. Otherwise just press enter.");
+
+            let mut buff = String::new();
+            std::io::stdin().read_line(&mut buff).unwrap();
+            let file = std::fs::File::create(buff.trim());
+            log.write_file(&mut file.unwrap());
+
             return;
         }
     }
