@@ -1,5 +1,5 @@
 
-use std::collections::{VecDeque, BinaryHeap};
+use std::collections::BinaryHeap;
 
 use crate::{process::{Process, BurstKind, Burst}, system_state::SystemState};
 

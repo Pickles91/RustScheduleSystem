@@ -1,5 +1,6 @@
 use crate::system_state::SystemState;
-use crate::process::{Process, Burst, BurstKind};
+use crate::process::Process;
+
 
 pub mod fcfs;
 pub mod priority;
