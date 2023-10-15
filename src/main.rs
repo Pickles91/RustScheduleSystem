@@ -132,6 +132,11 @@ fn start_sim(mut processes: VecDeque<Process>, mut cpu_sched: impl Scheduler, mu
 
             let mut buff = String::new();
             std::io::stdin().read_line(&mut buff).unwrap();
+
+            if buff.trim().is_empty() {
+                return;
+            }
+
             let file = std::fs::File::create(buff.trim());
             log.write_file(&mut file.unwrap());
 
