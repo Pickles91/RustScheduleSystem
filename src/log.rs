@@ -1,4 +1,5 @@
 use std::{io::Stdout, collections::HashSet};
+use std::io::Write;
 
 use tui::{Terminal, backend::CrosstermBackend, widgets::{List, ListItem, Block, Borders}, layout::Rect};
 
@@ -370,6 +371,9 @@ impl Log {
         // bidirectionally here. It's the benefit of logging
         // everything before drawing the GUI.
         let mut i = 1;
+        let mut f = std::fs::File::create("output.txt").unwrap();
+        f.write_all(Self::get_log_content(&self.content).join("\n").as_bytes()).unwrap();
+        f.sync_all().unwrap();
         loop {
             if i > self.content.len() {
                 break;
