@@ -160,14 +160,6 @@ impl Log {
     fn get_log_content(content: &[TickEntry]) -> Vec<String> {
         let mut log_contents = vec![];
         for i in 0..content.len() {
-            let cpu_arrivals = Self::get_cpu_arrivals(&content[..i + 1]);
-            if !cpu_arrivals.is_empty() {
-                log_contents.push(format!("T{}: PROCESSES ARRIVED IN READY QUEUE: [{}]", i, cpu_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
-            }
-            let io_arrivals = Self::get_io_arrivals(&content[..i + 1]);
-            if !io_arrivals.is_empty() {
-                log_contents.push(format!("T{}: PROCESSES ARRIVED IN IO QUEUE: [{}]", i, io_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
-            }
             let new_cpu_user = match Self::get_scheduler_process(&content[i].io_process) {
                 Some(v) if i == 0 => Some(v),
                 Some(v) => if let Some(v2) = Self::get_scheduler_process(&content[i - 1].cpu_process) {
@@ -194,6 +186,16 @@ impl Log {
             if let Some(v) = new_io_user {
                 log_contents.push(format!("T{}: NEW PROCESS IS USING IO: {}", i, v.name));
             }
+
+            let cpu_arrivals = Self::get_cpu_arrivals(&content[..i + 1]);
+            if !cpu_arrivals.is_empty() {
+                log_contents.push(format!("T{}: PROCESSES ARRIVED IN READY QUEUE: [{}]", i, cpu_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
+            }
+            let io_arrivals = Self::get_io_arrivals(&content[..i + 1]);
+            if !io_arrivals.is_empty() {
+                log_contents.push(format!("T{}: PROCESSES ARRIVED IN IO QUEUE: [{}]", i, io_arrivals.into_iter().map(|proc| proc.name).collect::<Vec<_>>().join(",")));
+            }
+
             if i != 0 {
                 let new_finished = content[i]
                     .finished_processes
