@@ -2,7 +2,7 @@ use std::fs::File;
 use std::{io::Stdout, collections::HashSet};
 use std::io::Write;
 
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event, KeyEventKind};
 use tui::layout::{Direction, Constraint, Layout};
 use tui::widgets::Paragraph;
 use tui::{Terminal, backend::CrosstermBackend, widgets::{List, ListItem, Block, Borders}, layout::Rect};
@@ -418,6 +418,9 @@ impl Log {
         loop {
             Self::draw_frame(&mut self.term, &self.content[0..i]);
             if let Event::Key(k) = event::read().unwrap() {
+                if k.kind != KeyEventKind::Press {
+                    continue;
+                }
                 match k.code {
                     event::KeyCode::Left => i -= 1,
                     event::KeyCode::Right => i += 1,
