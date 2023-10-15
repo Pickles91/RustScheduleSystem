@@ -3,6 +3,7 @@ use std::{io::Stdout, collections::HashSet};
 use std::io::Write;
 
 use crossterm::event::{self, Event};
+use tui::layout::{Direction, Constraint, Layout};
 use tui::widgets::Paragraph;
 use tui::{Terminal, backend::CrosstermBackend, widgets::{List, ListItem, Block, Borders}, layout::Rect};
 
@@ -237,6 +238,31 @@ impl Log {
                 SchedulerResult::Idle | SchedulerResult::NoBurstLeft => format!("IO0: IDLE"),
                 _ => format!("IO0: IDLE"),
             };
+            let main_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                ])
+                .split(f.size());
+            let first_row = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                ]).split(main_layout[0]);
+            let last_row = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(2),
+                    Constraint::Length(3)
+                ])
+                .split(main_layout[2]);
             f.render_widget(
                 List::new([
                     ListItem::new(cpu_text),
@@ -247,7 +273,7 @@ impl Log {
                         .title("STATUS")
                         .borders(Borders::all())
                 )
-                , Rect::new(0, 0, 40, 10)
+                , first_row[0]
             );
             f.render_widget(
                 List::new([
@@ -287,7 +313,7 @@ impl Log {
                         Block::default()
                             .title("SYSTEM STATE")
                             .borders(Borders::all())
-                ), Rect::new(40, 0, 20, 10)
+                ), first_row[1]
             );
             f.render_widget(
                 List::new(
@@ -298,7 +324,7 @@ impl Log {
                         .title("CPU QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(60, 0, 20, 10)
+                , first_row[2]
             );
             f.render_widget(
                 List::new(
@@ -309,7 +335,7 @@ impl Log {
                         .title("IO QUEUE")
                         .borders(Borders::all())
                 )
-                , Rect::new(80, 0, 20, 10)
+                , first_row[3]
             );
             f.render_widget(
                 List::new(
@@ -320,7 +346,7 @@ impl Log {
                         .title("FINISHED PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(100, 0, 20, 10)
+                , first_row[4]
             );
             f.render_widget(
                 List::new(
@@ -331,7 +357,7 @@ impl Log {
                         .title("FUTURE PROCESSES")
                         .borders(Borders::all())
                 )
-                , Rect::new(120, 0, 20, 10)
+                , first_row[5]
             );
             f.render_widget(
                 List::new(
@@ -349,14 +375,13 @@ impl Log {
                             .title("PROCESS INFO")
                             .borders(Borders::all())
                 )
-                , Rect::new(0, 10, 140, 5)
+                , main_layout[1]
             );
             f.render_widget(
                 List::new(
                     Self::get_log_content(content)
                         .into_iter()
                         .rev()
-                        .take(5)
                         .map(|process| ListItem::new(format!("{:?}", process)))
                         .collect::<Vec<_>>()
                 )
@@ -365,7 +390,7 @@ impl Log {
                             .title("LOG")
                             .borders(Borders::all())
                 )
-                , Rect::new(0, 15, 140, 7)
+                , last_row[0]
             );
             f.render_widget(
                 Paragraph::new("Press left and write arrow keys to progress / step back in time. Press q to exit.")
@@ -374,7 +399,7 @@ impl Log {
                             .title("Instructions")
                             .borders(Borders::all())
                     )
-                ,  Rect::new(0, 22, 140, 3)
+                ,  last_row[1]
             )
         }).unwrap();
     }
