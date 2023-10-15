@@ -54,11 +54,11 @@ impl Log {
     }
 
     fn wait_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
-        Some((Self::finished_time(pid, content)? + 1) - Self::total_compute_time(pid, content)? -  Self::arrival_time(pid, content)?)
+        Some(Self::finished_time(pid, content)? - Self::total_compute_time(pid, content)? -  Self::arrival_time(pid, content)?)
     }
 
     fn turn_around_time(pid: i32, content: &[TickEntry]) -> Option<i32> {
-        Some((Self::finished_time(pid, content)? + 1)  -  Self::arrival_time(pid, content)?)
+        Some(Self::finished_time(pid, content)?  -  Self::arrival_time(pid, content)?)
     }
 
     fn avg_wait_time(content: &[TickEntry]) -> f64 {
