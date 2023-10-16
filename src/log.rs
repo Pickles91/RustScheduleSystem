@@ -66,6 +66,11 @@ impl Log {
         Some(Self::finished_time(pid, content)?  -  Self::arrival_time(pid, content)?)
     }
 
+
+    fn throughput(content: &[TickEntry]) -> f64 {
+        content.last().unwrap().finished_processes.len() as f64 / content.len() as f64
+    }
+
     fn avg_wait_time(content: &[TickEntry]) -> f64 {
         let (count, sum) = content
             .last()
@@ -314,6 +319,12 @@ impl Log {
                         format!(
                             "AVG TURNARND: {:.2}",
                             Self::avg_turnaround_time(content)
+                        )
+                    ),
+                    ListItem::new(
+                        format!(
+                            "THROUGHPUT: {:.2}",
+                            Self::throughput(content)
                         )
                     ),
                 ])
