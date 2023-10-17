@@ -412,7 +412,7 @@ impl Log {
                 , last_row[0]
             );
             f.render_widget(
-                Paragraph::new("Press left and write arrow keys to progress / step back in time. Press q to exit.")
+                Paragraph::new("Press left and right arrow keys to progress / step back in time. Press q to exit.")
                     .block(
                         Block::default()
                             .title("Instructions")
